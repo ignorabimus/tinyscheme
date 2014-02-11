@@ -4886,6 +4886,9 @@ void scheme_register_foreign_func_list(scheme * sc,
 pointer scheme_apply0(scheme *sc, const char *procname)
 { return scheme_eval(sc, cons(sc,mk_symbol(sc,procname),sc->NIL)); }
 
+pointer scheme_apply1(scheme *sc, const char *procname, pointer args)
+{ return scheme_eval(sc, cons(sc,mk_symbol(sc,procname),args)); }
+
 void save_from_C_call(scheme *sc)
 {
   pointer saved_data =

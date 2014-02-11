@@ -18,7 +18,9 @@
 # include <unistd.h>
 #endif
 #ifdef WIN32
-#define snprintf _snprintf
+# define snprintf _snprintf
+# include <sys/types.h>
+# include <io.h>
 #endif
 #if USE_DL
 # include "dynload.h"
@@ -1456,7 +1458,7 @@ static port *port_rep_from_scratch(scheme *sc) {
   if(pt==0) {
     return 0;
   }
-  start=sc->malloc(BLOCK_SIZE);
+  start=(char *)sc->malloc(BLOCK_SIZE);
   if(start==0) {
     return 0;
   }
@@ -1549,7 +1551,7 @@ static int realloc_port_string(scheme *sc, port *p)
 {
   char *start=p->rep.string.start;
   size_t new_size=p->rep.string.past_the_end-start+1+BLOCK_SIZE;
-  char *str=sc->malloc(new_size);
+  char *str=(char *)sc->malloc(new_size);
   if(str) {
     memset(str,' ',new_size-1);
     str[new_size-1]='\0';
@@ -3182,7 +3184,7 @@ static pointer opexe_2(scheme *sc, enum scheme_opcodes op) {
           if (real_result) {
              s_return(sc, mk_real(sc, result));
           } else {
-             s_return(sc, mk_integer(sc, result));
+             s_return(sc, mk_integer(sc, (long)result));
           }
      }
 
@@ -3944,7 +3946,7 @@ static pointer opexe_4(scheme *sc, enum scheme_opcodes op) {
                char *str;
 
                size=p->rep.string.curr-p->rep.string.start+1;
-               str=sc->malloc(size);
+               str=(char *)sc->malloc(size);
                if(str != NULL) {
                     pointer s;
 

@@ -2287,6 +2287,16 @@ static INLINE pointer slot_value_in_env(pointer slot)
   return cdr(slot);
 }
 
+static INLINE void def_slot_in_env(scheme *sc, pointer env, pointer variable, pointer value)
+{
+  pointer x = find_slot_in_env(sc,env,variable,0);
+  if (x != sc->NIL) {
+    set_slot_in_env(sc, x, value);
+  } else {
+    new_slot_spec_in_env(sc, env, variable, value);
+  }
+}
+
 /* ========== Evaluation Cycle ========== */
 
 
@@ -2809,76 +2819,69 @@ static pointer opexe_0(scheme *sc, enum scheme_opcodes op) {
                                             * car(sc->NIL) = sc->NIL */
           s_goto(sc,OP_EVAL);
 
-     case OP_LET0:       /* let */
-          sc->args = sc->NIL;
-          sc->value = sc->code;
-          sc->code = is_symbol(car(sc->code)) ? cadr(sc->code) : car(sc->code);
-          s_goto(sc,OP_LET1);
-
-     case OP_LET1:       /* let (calculate parameters) */
-          sc->args = cons(sc, sc->value, sc->args);
-          if (is_pair(sc->code)) { /* continue */
-               if (!is_pair(car(sc->code)) || !is_pair(cdar(sc->code))) {
-                    Error_1(sc, "Bad syntax of binding spec in let :",
-                            car(sc->code));
+     case OP_LET0:      /* let */
+          y = sc->envir;
+               new_frame_in_env(sc, sc->envir);
+               if (is_symbol(car(sc->code))) { /* named let */
+               pointer name,args;
+               for (name = cadr(sc->code), args = sc->NIL; name != sc->NIL; name = cdr(name)) {
+                    if (!is_pair(name)) Error_1(sc, "Bad syntax of binding spec in let :",name);
+                    args = cons(sc,caar(name),args);
                }
-               s_save(sc,OP_LET1, sc->args, cdr(sc->code));
+               x = mk_closure(sc, cons(sc, reverse_in_place(sc, sc->NIL, args), cddr(sc->code)), sc->envir);
+               new_slot_in_env(sc, car(sc->code), x);
+               sc->code = cdr(sc->code);
+          } else { /* let */
+               if (car(sc->code) == sc->NIL) {
+                    sc->code = cdr(sc->code);
+                    s_goto(sc,OP_BEGIN);
+               } else {
+                    if(!is_pair(car(sc->code)) || !is_pair(caar(sc->code)) || !is_pair(cdaar(sc->code))) {
+                         Error_1(sc,"Bad syntax of binding spec in let* :",car(sc->code));
+                    }
+               }
+          }
+          x = sc->envir;
+          sc->envir = y;
+          s_save(sc,OP_LET1, cons(sc,cdr(sc->code),x), car(sc->code));
+          sc->code = cadaar(sc->code);
+          s_goto(sc,OP_EVAL);
+
+     case OP_LET1:    /* calculate let bindings */
+          def_slot_in_env(sc, cdr(sc->args), caar(sc->code), sc->value);
+          sc->code = cdr(sc->code);
+          if (is_pair(sc->code)) { /* continue */
+               s_save(sc,OP_LET1, sc->args, sc->code);
                sc->code = cadar(sc->code);
                sc->args = sc->NIL;
                s_goto(sc,OP_EVAL);
           } else {  /* end */
-               sc->args = reverse_in_place(sc, sc->NIL, sc->args);
                sc->code = car(sc->args);
-               sc->args = cdr(sc->args);
-               s_goto(sc,OP_LET2);
-          }
-
-     case OP_LET2:       /* let */
-          new_frame_in_env(sc, sc->envir);
-          for (x = is_symbol(car(sc->code)) ? cadr(sc->code) : car(sc->code), y = sc->args;
-               y != sc->NIL; x = cdr(x), y = cdr(y)) {
-               new_slot_in_env(sc, caar(x), car(y));
-          }
-          if (is_symbol(car(sc->code))) {    /* named let */
-               for (x = cadr(sc->code), sc->args = sc->NIL; x != sc->NIL; x = cdr(x)) {
-                    if (!is_pair(x))
-                        Error_1(sc, "Bad syntax of binding in let :", x);
-                    if (!is_list(sc, car(x)))
-                        Error_1(sc, "Bad syntax of binding in let :", car(x));
-                    sc->args = cons(sc, caar(x), sc->args);
-               }
-               x = mk_closure(sc, cons(sc, reverse_in_place(sc, sc->NIL, sc->args), cddr(sc->code)), sc->envir);
-               new_slot_in_env(sc, car(sc->code), x);
-               sc->code = cddr(sc->code);
+               sc->envir = cdr(sc->args);
                sc->args = sc->NIL;
-          } else {
-               sc->code = cdr(sc->code);
-               sc->args = sc->NIL;
+               s_goto(sc,OP_BEGIN);
           }
-          s_goto(sc,OP_BEGIN);
 
      case OP_LET0AST:    /* let* */
           if (car(sc->code) == sc->NIL) {
                new_frame_in_env(sc, sc->envir);
                sc->code = cdr(sc->code);
                s_goto(sc,OP_BEGIN);
+          } else {
+               if(!is_pair(car(sc->code)) || !is_pair(caar(sc->code)) || !is_pair(cdaar(sc->code))) {
+                    Error_1(sc,"Bad syntax of binding spec in let* :",car(sc->code));
+               }
+               new_frame_in_env(sc, sc->envir);
+               s_save(sc,OP_LET1AST, cdr(sc->code), car(sc->code));
+               sc->code = cadaar(sc->code);
+               s_goto(sc,OP_EVAL);
           }
-          if(!is_pair(car(sc->code)) || !is_pair(caar(sc->code)) || !is_pair(cdaar(sc->code))) {
-               Error_1(sc,"Bad syntax of binding spec in let* :",car(sc->code));
-          }
-          s_save(sc,OP_LET1AST, cdr(sc->code), car(sc->code));
-          sc->code = cadaar(sc->code);
-          s_goto(sc,OP_EVAL);
 
-     case OP_LET1AST:    /* let* (make new frame) */
-          new_frame_in_env(sc, sc->envir);
-          s_goto(sc,OP_LET2AST);
-
-     case OP_LET2AST:    /* let* (calculate parameters) */
-          new_slot_in_env(sc, caar(sc->code), sc->value);
+     case OP_LET1AST:    /* calculate let* bindings */
+          def_slot_in_env(sc, sc->envir, caar(sc->code), sc->value);
           sc->code = cdr(sc->code);
           if (is_pair(sc->code)) { /* continue */
-               s_save(sc,OP_LET2AST, sc->args, sc->code);
+               s_save(sc,OP_LET1AST, sc->args, sc->code);
                sc->code = cadar(sc->code);
                sc->args = sc->NIL;
                s_goto(sc,OP_EVAL);

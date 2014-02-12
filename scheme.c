@@ -2528,8 +2528,14 @@ static pointer opexe_0(scheme *sc, enum scheme_opcodes op) {
 
        /* Set up another iteration of REPL */
        sc->nesting=0;
-       sc->save_inport=sc->inport;
-       sc->inport = sc->loadport;
+       /* There's a chance that sc->inport is already set to sc->loadport.
+        * If so, don't clobber sc->save_inport otherwise
+        * (read (current-input-port)) will fail if the scheme program
+        * is loaded from a script */
+       if(sc->inport != sc->loadport) {
+         sc->save_inport=sc->inport;
+         sc->inport = sc->loadport;
+       }
        s_save(sc,OP_T0LVL, sc->NIL, sc->NIL);
        s_save(sc,OP_VALUEPRINT, sc->NIL, sc->NIL);
        s_save(sc,OP_T1LVL, sc->NIL, sc->NIL);
@@ -4823,7 +4829,6 @@ void scheme_load_named_file(scheme *sc, FILE *fin, const char *filename) {
     sc->load_stack[0].rep.stdio.filename = store_string(sc, strlen(filename), filename, 0);
 #endif
 
-  sc->inport=sc->loadport;
   sc->args = mk_integer(sc,sc->file_i);
   Eval_Cycle(sc, OP_T0LVL);
   typeflag(sc->loadport)=T_ATOM;
@@ -4843,7 +4848,6 @@ void scheme_load_string(scheme *sc, const char *cmd) {
   sc->loadport=mk_port(sc,sc->load_stack);
   sc->retcode=0;
   sc->interactive_repl=0;
-  sc->inport=sc->loadport;
   sc->args = mk_integer(sc,sc->file_i);
   Eval_Cycle(sc, OP_T0LVL);
   typeflag(sc->loadport)=T_ATOM;

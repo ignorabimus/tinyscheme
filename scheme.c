@@ -2432,6 +2432,37 @@ static pointer _s_return(scheme *sc, pointer a)
   return sc->T;
 }
 
+static pointer s_clone(scheme *sc, pointer dump) {
+  struct dump_stack_frame *dump_frame;
+  int n;
+
+  if (dump == sc->NIL) return (pointer)0;
+
+  n = (int)s_clone(sc, cddddr(dump));
+  dump_frame = (struct dump_stack_frame *)sc->dump_base + n;
+  dump_frame->op = ivalue(car(dump));
+  dump_frame->args = duplist(sc, cadr(dump));
+  dump_frame->envir = caddr(dump);
+  dump_frame->code = cadddr(dump);
+
+  return (pointer)(n+1);
+}
+
+static pointer s_clone_save(scheme *sc, pointer dump) {
+  struct dump_stack_frame *dump_frame;
+  pointer d;
+
+  if ((int)dump == 0) return sc->NIL;
+
+  dump_frame = (struct dump_stack_frame *)sc->dump_base + (int)dump - 1;
+  d = cons(sc, dump_frame->code, s_clone_save(sc, (pointer)((int)dump - 1)));
+  d = cons(sc, dump_frame->envir, d);
+  d = cons(sc, duplist(sc, dump_frame->args), d);
+  d = cons(sc, mk_integer(sc, dump_frame->op), d);
+
+  return d;
+}
+
 static INLINE void dump_stack_reset(scheme *sc)
 {
   /* in this implementation, sc->dump is the number of frames on the stack */
@@ -2513,6 +2544,8 @@ static pointer s_clone(scheme *sc, pointer dump) {
 
     return d;
 }
+
+#define s_clone_save s_clone
 
 static INLINE void dump_stack_mark(scheme *sc)
 {
@@ -3128,7 +3161,7 @@ static pointer opexe_1(scheme *sc, enum scheme_opcodes op) {
 
      case OP_CONTINUATION:    /* call-with-current-continuation */
           sc->code = car(sc->args);
-          sc->args = cons(sc, mk_continuation(sc, sc->dump), sc->NIL);
+          sc->args = cons(sc, mk_continuation(sc, s_clone_save(sc, sc->dump)), sc->NIL);
           s_goto(sc,OP_APPLY);
 
      default:

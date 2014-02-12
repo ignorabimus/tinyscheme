@@ -2090,6 +2090,22 @@ static pointer reverse_in_place(scheme *sc, pointer term, pointer list) {
      return (result);
 }
 
+/* duplicate list -- produce new list (in order) */
+static pointer duplist(scheme *sc, pointer a) {
+     pointer p, result;
+
+     if (a == sc->NIL)
+          return sc->NIL;
+
+     result = cons(sc, car(a), sc->NIL);
+
+     for (p = result, a = cdr(a); a != sc->NIL; a = cdr(a)) {
+          cdr(p) = cons(sc, car(a), sc->NIL);
+          p = cdr(p);
+     }
+     return result;
+}
+
 /* append list -- produce new list (in reverse order) */
 static pointer revappend(scheme *sc, pointer a, pointer b) {
     pointer result = a;
@@ -2484,6 +2500,20 @@ static void s_save(scheme *sc, enum scheme_opcodes op, pointer args, pointer cod
     sc->dump = cons(sc, mk_integer(sc, (long)(op)), sc->dump);
 }
 
+static pointer s_clone(scheme *sc, pointer dump) {
+    pointer d;
+
+    if (dump == sc->NIL) return sc->NIL;
+
+    /* code and prior stack frames. */
+    d = cons(sc, cadddr(dump), s_clone(sc, cddddr(dump)));
+    d = cons(sc, caddr(dump), d);             /* environment */
+    d = cons(sc, duplist(sc, cadr(dump)), d); /* duplicated args */
+    d = cons(sc, car(dump), d);               /* opcode */
+
+    return d;
+}
+
 static INLINE void dump_stack_mark(scheme *sc)
 {
   mark(sc->dump);
@@ -2694,7 +2724,7 @@ static pointer opexe_0(scheme *sc, enum scheme_opcodes op) {
                sc->args = sc->NIL;
                s_goto(sc,OP_BEGIN);
           } else if (is_continuation(sc->code)) { /* CONTINUATION */
-               sc->dump = cont_dump(sc->code);
+               sc->dump = s_clone(sc, cont_dump(sc->code));
                s_return(sc,sc->args != sc->NIL ? car(sc->args) : sc->NIL);
           } else {
                Error_0(sc,"illegal function");

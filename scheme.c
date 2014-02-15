@@ -2884,8 +2884,8 @@ static pointer opexe_0(scheme *sc, enum scheme_opcodes op) {
 
      case OP_LET0:      /* let */
           y = sc->envir;
-               new_frame_in_env(sc, sc->envir);
-               if (is_symbol(car(sc->code))) { /* named let */
+          new_frame_in_env(sc, sc->envir);
+          if (is_symbol(car(sc->code))) { /* named let */
                pointer name,args;
                for (name = cadr(sc->code), args = sc->NIL; name != sc->NIL; name = cdr(name)) {
                     if (!is_pair(name)) Error_1(sc, "Bad syntax of binding spec in let :",name);
@@ -2900,7 +2900,7 @@ static pointer opexe_0(scheme *sc, enum scheme_opcodes op) {
                     s_goto(sc,OP_BEGIN);
                } else {
                     if(!is_pair(car(sc->code)) || !is_pair(caar(sc->code)) || !is_pair(cdaar(sc->code))) {
-                         Error_1(sc,"Bad syntax of binding spec in let* :",car(sc->code));
+                         Error_1(sc,"Bad syntax of binding spec in let :",car(sc->code));
                     }
                }
           }

@@ -2442,7 +2442,7 @@ static pointer s_clone(scheme *sc, pointer dump) {
   dump_frame = (struct dump_stack_frame *)sc->dump_base + n;
   dump_frame->op = ivalue(car(dump));
   dump_frame->args = duplist(sc, cadr(dump));
-  dump_frame->envir = caddr(dump);
+  dump_frame->envir = duplist(sc, caddr(dump));
   dump_frame->code = cadddr(dump);
 
   return (pointer)(n+1);
@@ -2456,7 +2456,7 @@ static pointer s_clone_save(scheme *sc, pointer dump) {
 
   dump_frame = (struct dump_stack_frame *)sc->dump_base + (int)dump - 1;
   d = cons(sc, dump_frame->code, s_clone_save(sc, (pointer)((int)dump - 1)));
-  d = cons(sc, dump_frame->envir, d);
+  d = cons(sc, duplist(sc, dump_frame->envir), d);
   d = cons(sc, duplist(sc, dump_frame->args), d);
   d = cons(sc, mk_integer(sc, dump_frame->op), d);
 
@@ -2538,9 +2538,9 @@ static pointer s_clone(scheme *sc, pointer dump) {
 
     /* code and prior stack frames. */
     d = cons(sc, cadddr(dump), s_clone(sc, cddddr(dump)));
-    d = cons(sc, caddr(dump), d);             /* environment */
-    d = cons(sc, duplist(sc, cadr(dump)), d); /* duplicated args */
-    d = cons(sc, car(dump), d);               /* opcode */
+    d = cons(sc, duplist(sc, caddr(dump)), d); /* duplicated environment */
+    d = cons(sc, duplist(sc, cadr(dump)), d);  /* duplicated args */
+    d = cons(sc, car(dump), d);                /* opcode */
 
     return d;
 }

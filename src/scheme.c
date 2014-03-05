@@ -1051,22 +1051,17 @@ INTERFACE pointer mk_symbol(scheme *sc, const char *name) {
      }
 }
 
+/* get new uninterned-symbol */
 INTERFACE pointer gensym(scheme *sc) {
-     pointer x;
-     char name[40];
+     if (sc->gensym_cnt < LONG_MAX) {
+          pointer x;
+          char name[40];
 
-     for(; sc->gensym_cnt<LONG_MAX; sc->gensym_cnt++) {
-          snprintf(name,40,"gensym-%ld",sc->gensym_cnt);
-
-          /* first check oblist */
-          x = oblist_find_by_name(sc, name);
-
-          if (x != sc->NIL) {
-               continue;
-          } else {
-               x = oblist_add_by_name(sc, name);
-               return (x);
-          }
+          snprintf(name, 40, "gensym-%ld", sc->gensym_cnt++);
+          x = immutable_cons(sc, mk_string(sc, name), sc->NIL);
+          typeflag(x) = T_SYMBOL;
+          setimmutable(car(x));
+          return x;
      }
 
      return sc->NIL;

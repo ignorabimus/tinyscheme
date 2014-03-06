@@ -1052,19 +1052,20 @@ INTERFACE pointer mk_symbol(scheme *sc, const char *name) {
 }
 
 /* get new uninterned-symbol */
+INTERFACE pointer mk_uninterned_symbol(scheme *sc, const char *name) {
+     pointer x;
+
+     x = immutable_cons(sc, mk_string(sc, name), sc->NIL);
+     typeflag(x) = T_SYMBOL;
+     setimmutable(car(x));
+     return x;
+}
+
 INTERFACE pointer gensym(scheme *sc) {
-     if (sc->gensym_cnt < LONG_MAX) {
-          pointer x;
-          char name[40];
+     char name[40];
 
-          snprintf(name, 40, "gensym-%ld", sc->gensym_cnt++);
-          x = immutable_cons(sc, mk_string(sc, name), sc->NIL);
-          typeflag(x) = T_SYMBOL;
-          setimmutable(car(x));
-          return x;
-     }
-
-     return sc->NIL;
+     snprintf(name, 40, "gensym-%lu", sc->gensym_cnt++);
+     return mk_uninterned_symbol(sc, name);
 }
 
 /* make symbol or number atom from string */
@@ -3414,6 +3415,9 @@ static pointer opexe_2(scheme *sc, enum scheme_opcodes op) {
 
      case OP_STR2SYM:  /* string->symbol */
           s_return(sc,mk_symbol(sc,strvalue(car(sc->args))));
+
+     case OP_STR2UISYM: /* string->uninterned-symbol */
+          s_return(sc, mk_uninterned_symbol(sc, strvalue(car(sc->args))));
 
      case OP_STR2ATOM: /* string->atom */ {
           char *s=strvalue(car(sc->args));

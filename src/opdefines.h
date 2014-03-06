@@ -90,6 +90,7 @@
     _OP_DEF(opexe_2, "symbol->string",                 1,  1,       TST_SYMBOL,                      OP_SYM2STR          )
     _OP_DEF(opexe_2, "atom->string",                   1,  2,       TST_ANY TST_NATURAL,             OP_ATOM2STR         )
     _OP_DEF(opexe_2, "string->symbol",                 1,  1,       TST_STRING,                      OP_STR2SYM          )
+    _OP_DEF(opexe_2, "string->uninterned-symbol",      1,  1,       TST_STRING,                      OP_STR2UISYM        )
     _OP_DEF(opexe_2, "string->atom",                   1,  2,       TST_STRING TST_NATURAL,          OP_STR2ATOM         )
     _OP_DEF(opexe_2, "make-string",                    1,  2,       TST_NATURAL TST_CHAR,            OP_MKSTRING         )
     _OP_DEF(opexe_2, "string-length",                  1,  1,       TST_STRING,                      OP_STRLEN           )

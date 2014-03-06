@@ -138,7 +138,7 @@ pointer value;
 int op;
 
 void *ext_data;     /* For the benefit of foreign functions */
-long gensym_cnt;
+unsigned long gensym_cnt;
 
 struct scheme_interface *vptr;
 void *dump_base;    /* pointer to base of allocated dump stack */

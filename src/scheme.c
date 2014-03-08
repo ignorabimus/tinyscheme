@@ -4892,6 +4892,8 @@ void scheme_load_named_file(scheme *sc, FILE *fin, const char *filename) {
   sc->load_stack[0].rep.stdio.curr_line = 0;
   if(fin!=stdin && filename)
     sc->load_stack[0].rep.stdio.filename = store_string(sc, strlen(filename), filename, 0);
+  else
+    sc->load_stack[0].rep.stdio.filename = 0;
 #endif
 
   sc->args = mk_integer(sc,sc->file_i);
@@ -5014,6 +5016,10 @@ pointer scheme_eval(scheme *sc, pointer obj)
 
 #endif
 
+#if USE_EMB_INIT
+#include "init_scm.h"
+#endif
+
 /* ========== Main ========== */
 
 #if STANDALONE
@@ -5060,13 +5066,18 @@ int main(int argc, char **argv) {
   scheme_define(&sc,sc.global_env,mk_symbol(&sc,"load-extension"),mk_foreign_func(&sc, scm_load_ext));
 #endif
   argv++;
+#if USE_EMB_INIT
+  scheme_load_string(&sc,init_scm);
+  file_name=*argv++;
+#else
   if(access(file_name,0)!=0) {
     char *p=getenv("TINYSCHEMEINIT");
     if(p!=0) {
       file_name=p;
     }
   }
-  do {
+#endif
+  while(file_name!=0) {
     if(strcmp(file_name,"-")==0) {
       fin=stdin;
     } else if(strcmp(file_name,"-1")==0 || strcmp(file_name,"-c")==0) {
@@ -5106,7 +5117,7 @@ int main(int argc, char **argv) {
       }
     }
     file_name=*argv++;
-  } while(file_name!=0);
+  }
   if(argc==1) {
     scheme_load_named_file(&sc,stdin,0);
   }

@@ -1,0 +1,25 @@
+(define (hex val)
+  (case val
+    ((10) #\A)
+    ((11) #\B)
+    ((12) #\C)
+    ((13) #\D)
+    ((14) #\E)
+    ((15) #\F)
+    (else val)))
+
+(let ((fin (open-input-file "init.scm")) (fout (open-output-file "init_scm.h")))
+  (display "const char init_scm[] = {" fout) (newline fout)
+  (let loop ((len 0) (c (read-char fin)))
+    (if (eof-object? c)
+      (begin
+        (display "0x00};" fout) (newline fout)
+        (close-input-port fin) (close-output-port fout))
+      (begin
+        (let ((val (char->integer c)))
+          (display "0x" fout)
+          (display (hex (quotient val 16)) fout)
+          (display (hex (remainder val 16)) fout)
+          (display "," fout))
+        (if (= (remainder len 16) 15) (newline fout))
+        (loop (+ len 1) (read-char fin))))))

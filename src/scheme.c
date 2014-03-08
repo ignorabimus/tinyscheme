@@ -2631,7 +2631,7 @@ static pointer opexe_0(scheme *sc, enum scheme_opcodes op) {
        if(sc->tracing) {
          putstr(sc,"\nGives: ");
        }
-       if(file_interactive(sc)) {
+       if(file_interactive(sc) || sc->tracing) {
          sc->print_flag = 1;
          sc->args = sc->value;
          s_goto(sc,OP_P0LIST);

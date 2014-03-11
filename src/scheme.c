@@ -2391,7 +2391,7 @@ struct dump_stack_frame {
 
 static void s_save(scheme *sc, enum scheme_opcodes op, pointer args, pointer code)
 {
-  int nframes = (int)sc->dump;
+  intptr_t nframes = (intptr_t)sc->dump;
   struct dump_stack_frame *next_frame;
 
   /* enough room for the next frame? */
@@ -2411,7 +2411,7 @@ static void s_save(scheme *sc, enum scheme_opcodes op, pointer args, pointer cod
 
 static pointer _s_return(scheme *sc, pointer a)
 {
-  int nframes = (int)sc->dump;
+  intptr_t nframes = (intptr_t)sc->dump;
   struct dump_stack_frame *frame;
 
   sc->value = (a);
@@ -2430,11 +2430,11 @@ static pointer _s_return(scheme *sc, pointer a)
 
 static pointer s_clone(scheme *sc, pointer dump) {
   struct dump_stack_frame *dump_frame;
-  int n;
+  intptr_t n;
 
   if (dump == sc->NIL) return (pointer)0;
 
-  n = (int)s_clone(sc, cddddr(dump));
+  n = (intptr_t)s_clone(sc, cddddr(dump));
   dump_frame = (struct dump_stack_frame *)sc->dump_base + n;
   dump_frame->op = ivalue(car(dump));
   dump_frame->args = duplist(sc, cadr(dump));
@@ -2448,10 +2448,10 @@ static pointer s_clone_save(scheme *sc, pointer dump) {
   struct dump_stack_frame *dump_frame;
   pointer d;
 
-  if ((int)dump == 0) return sc->NIL;
+  if ((intptr_t)dump == 0) return sc->NIL;
 
-  dump_frame = (struct dump_stack_frame *)sc->dump_base + (int)dump - 1;
-  d = cons(sc, dump_frame->code, s_clone_save(sc, (pointer)((int)dump - 1)));
+  dump_frame = (struct dump_stack_frame *)sc->dump_base + (intptr_t)dump - 1;
+  d = cons(sc, dump_frame->code, s_clone_save(sc, (pointer)((intptr_t)dump - 1)));
   d = cons(sc, duplist(sc, dump_frame->envir), d);
   d = cons(sc, duplist(sc, dump_frame->args), d);
   d = cons(sc, mk_integer(sc, dump_frame->op), d);
@@ -2482,8 +2482,8 @@ static void dump_stack_free(scheme *sc)
 
 static INLINE void dump_stack_mark(scheme *sc)
 {
-  int nframes = (int)sc->dump;
-  int i;
+  intptr_t nframes = (intptr_t)sc->dump;
+  intptr_t i;
   for(i=0; i<nframes; i++) {
     struct dump_stack_frame *frame;
     frame = (struct dump_stack_frame *)sc->dump_base + i;

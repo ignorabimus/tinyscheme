@@ -20,7 +20,7 @@ static void make_init_fn(const char *name, char *init_fn);
 # include <windows.h>
 #else
 typedef void *HMODULE;
-typedef void (*FARPROC)();
+typedef void *FARPROC;
 #define SUN_DL
 #include <dlfcn.h>
 #endif
@@ -105,7 +105,7 @@ pointer scm_load_ext(scheme *sc, pointer args)
          retval = sc -> F;
       }
       else {
-         module_init = (void(*)(scheme *))dl_proc(dll_handle, init_fn);
+         *(void **)&module_init = dl_proc(dll_handle, init_fn);
          if (module_init != 0) {
             (*module_init)(sc);
             retval = sc -> T;

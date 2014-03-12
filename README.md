@@ -50,3 +50,9 @@ Links
 [D. Souflis, J. Shapiro - TinyScheme Home](http://tinyscheme.sourceforge.net/home.html)
 
 [Visual Studio Downloads](http://www.visualstudio.com/downloads/)
+
+
+License
+-------
+
+Copyright (c) 2014 Tatsuya Watanabe. See the LICENSE file for license rights and limitations (MIT).

@@ -705,13 +705,12 @@ static pointer get_consecutive_cells(scheme *sc, int n) {
 }
 
 static int count_consecutive_cells(pointer x, int needed) {
- int n=1;
- while(cdr(x)==x+1) {
-     x=cdr(x);
-     n++;
-     if(n>needed) return n;
- }
- return n;
+  int n = 1;
+  while (cdr(x) == x + 1) {
+    if (++n >= needed) { return n; }
+    x = cdr(x);
+  }
+  return n;
 }
 
 static pointer find_consecutive_cells(scheme *sc, int n) {
@@ -1291,9 +1290,9 @@ static void gc(scheme *sc, pointer a, pointer b) {
     p = sc->cell_seg[i] + CELL_SEGSIZE;
     while (--p >= sc->cell_seg[i]) {
       if (is_mark(p)) {
-    clrmark(p);
+        clrmark(p);
       } else {
-    /* reclaim cell */
+        /* reclaim cell */
         if (typeflag(p) != 0) {
           finalize_cell(sc, p);
           typeflag(p) = 0;
@@ -2229,21 +2228,21 @@ static pointer find_slot_in_env(scheme *sc, pointer env, pointer hdl, int all)
       y = car(x);
     }
     for ( ; y != sc->NIL; y = cdr(y)) {
-              if (caar(y) == hdl) {
-                   break;
-              }
-         }
-         if (y != sc->NIL) {
-              break;
-         }
-         if(!all) {
-           return sc->NIL;
-         }
+      if (caar(y) == hdl) {
+        break;
+      }
     }
-    if (x != sc->NIL) {
-          return car(y);
+    if (y != sc->NIL) {
+       break;
     }
-    return sc->NIL;
+    if(!all) {
+      return sc->NIL;
+    }
+  }
+  if (x != sc->NIL) {
+    return car(y);
+  }
+  return sc->NIL;
 }
 
 #else /* USE_ALIST_ENV */

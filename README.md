@@ -4,6 +4,17 @@ tinyscheme
 Experimental fork of [TinyScheme](http://tinyscheme.sourceforge.net/ "D. Souflis, J. Shapiro - TinyScheme Download site")
 
 
+Features
+--------
+
+* based on TinyScheme 1.41
+* build with MS Visual C++ on Windows
+* continuations support without using 'SCHEME STACK' (#undef USE_SCHEME_STACK)
+* embedding 'init.scm' into tinyscheme.exe (or tinyscheme.lib)
+* fixed crash in GC after getting read-char 'EOF'
+* implement 'string->uninterned-symbol' and 'gensym' gets new uninterned-symbol
+
+
 Build (with MSVC)
 -----------------
 

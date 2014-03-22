@@ -803,15 +803,15 @@ static void check_range_alloced(pointer p, int n, int expect_alloced)
 /* Medium level cell allocation */
 
 /* get new cons cell */
-pointer _cons(scheme *sc, pointer a, pointer b, int immutable) {
-  pointer x = get_cell(sc,a, b);
+pointer cons(scheme *sc, pointer a, pointer b) {
+  return get_cell(sc, a, b);
+}
 
-  typeflag(x) = T_PAIR;
-  if(immutable) {
-    setimmutable(x);
-  }
-  car(x) = a;
-  cdr(x) = b;
+/* get new immutable cons cell */
+pointer immutable_cons(scheme *sc, pointer a, pointer b) {
+  pointer x = get_cell(sc, a, b);
+
+  setimmutable(x);
   return (x);
 }
 

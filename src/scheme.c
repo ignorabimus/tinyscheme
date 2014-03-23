@@ -5022,6 +5022,14 @@ pointer scheme_eval(scheme *sc, pointer obj)
 #include "init_scm.h"
 #endif
 
+#if USE_LIB_TSX
+void init_tsx(scheme *sc);
+#endif
+
+#if USE_LIB_RE
+void init_re(scheme *sc);
+#endif
+
 /* ========== Main ========== */
 
 #if STANDALONE
@@ -5079,6 +5087,15 @@ int main(int argc, char **argv) {
     }
   }
 #endif
+
+#if USE_LIB_TSX
+  init_tsx(&sc);
+#endif
+
+#if USE_LIB_RE
+  init_re(&sc);
+#endif
+
   while(file_name!=0) {
     if(strcmp(file_name,"-")==0) {
       fin=stdin;

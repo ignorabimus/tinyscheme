@@ -8,6 +8,12 @@
 
 #include "scheme-private.h"
 #include <sys/stat.h>
+#ifdef WIN32
+#include <ws2tcpip.h>
+#include <time.h>
+#include <sys/timeb.h>
+#include <io.h>
+#else
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -19,6 +25,7 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <dirent.h>
+#endif
 #include "tsx.h"
 
 #undef cons
@@ -156,7 +163,11 @@ pointer foreign_deletefile(scheme * sc, pointer args)
   }
 
   filename = sc->vptr->string_value(first_arg);
+#ifdef WIN32
+  retcode = _unlink(filename);
+#else
   retcode = unlink(filename);
+#endif
   if (0 == retcode) {
     ret = sc->T;
   }
@@ -170,7 +181,12 @@ pointer foreign_opendirstream(scheme * sc, pointer args)
 {
   pointer first_arg;
   char * dirpath;
+#ifdef WIN32
+  long dir;
+  struct _finddata_t entry;
+#else
   DIR * dir;
+#endif
 
   if(args == sc->NIL)
     return sc->F;
@@ -181,8 +197,13 @@ pointer foreign_opendirstream(scheme * sc, pointer args)
   
   dirpath = sc->vptr->string_value(first_arg);
 
+#ifdef WIN32
+  dir = _findfirst(dirpath, &entry);
+  if(-1L == dir)
+#else
   dir = opendir(dirpath);
   if(0 == dir)
+#endif
     return sc->F;
 
   return (sc->vptr->mk_integer(sc,(int) dir));
@@ -191,8 +212,13 @@ pointer foreign_opendirstream(scheme * sc, pointer args)
 pointer foreign_readdirentry(scheme * sc, pointer args)
 {
   pointer first_arg;
+#ifdef WIN32
+  long dir;
+  struct _finddata_t entry;
+#else
   DIR * dir;
   struct dirent * entry;
+#endif
 
   if(args == sc->NIL)
     return sc->F;
@@ -201,21 +227,39 @@ pointer foreign_readdirentry(scheme * sc, pointer args)
   if(!sc->vptr->is_number(first_arg))
     return sc->F;
   
+#ifdef WIN32
+  dir = (long) sc->vptr->ivalue(first_arg);
+  if(-1L == dir)
+#else
   dir = (DIR *) sc->vptr->ivalue(first_arg);
   if(0 == dir)
+#endif
     return sc->F;
 
+#ifdef WIN32
+  dir = _findnext(dir, &entry);
+  if(-1L == dir)
+#else
   entry = readdir(dir);
   if(0 == entry)
+#endif
     return sc->EOF_OBJ;
 
+#ifdef WIN32
+  return (sc->vptr->mk_string(sc,entry.name));
+#else
   return (sc->vptr->mk_string(sc,entry->d_name));
+#endif
 }
 
 pointer foreign_closedirstream(scheme * sc, pointer args)
 {
   pointer first_arg;
+#ifdef WIN32
+  long dir;
+#else
   DIR * dir;
+#endif
 
   if(args == sc->NIL)
     return sc->F;
@@ -224,11 +268,20 @@ pointer foreign_closedirstream(scheme * sc, pointer args)
   if(!sc->vptr->is_number(first_arg))
     return sc->F;
   
+#ifdef WIN32
+  dir = (long) sc->vptr->ivalue(first_arg);
+  if(-1L == dir)
+#else
   dir = (DIR *) sc->vptr->ivalue(first_arg);
   if(0 == dir)
+#endif
     return sc->F;
 
+#ifdef WIN32
+  _findclose(dir);
+#else
   closedir(dir);
+#endif
   return sc->T;
 }
 #endif /* defined (HAVE_FILESYSTEM) */
@@ -263,7 +316,15 @@ pointer foreign_gettimeofday(scheme * sc, pointer args)
   struct timeval tv;
   pointer ret;
 
+#ifdef WIN32
+  struct _timeb tb;
+
+  _ftime(&tb);
+  tv.tv_sec = (long) tb.time;
+  tv.tv_usec = tb.millitm * 1000;
+#else
   gettimeofday(&tv, 0);
+#endif
   
   ret = sc->vptr->cons(sc,sc->vptr->mk_integer(sc,(long) tv.tv_sec),
          sc->vptr->cons(sc,sc->vptr->mk_integer(sc,(long) tv.tv_usec),
@@ -276,7 +337,6 @@ pointer foreign_usleep(scheme * sc, pointer args)
 {
   pointer first_arg;
   long usec;
-  int retcode;
 
   if(args == sc->NIL)
     return sc->F;
@@ -287,7 +347,21 @@ pointer foreign_usleep(scheme * sc, pointer args)
   }
 
   usec = sc->vptr->ivalue(first_arg);
-  retcode = usleep(usec);
+#ifdef WIN32
+  if (usec > 0) {
+    HANDLE hTimer;
+    LARGE_INTEGER dueTime;
+
+    dueTime.QuadPart = -10LL * usec;
+
+    hTimer = CreateWaitableTimer(NULL, TRUE, NULL);
+    SetWaitableTimer(hTimer, &dueTime, 0, NULL, NULL, 0);
+    WaitForSingleObject(hTimer, INFINITE);
+    CloseHandle(hTimer);
+  }
+#else
+  usleep(usec);
+#endif
 
   return sc->T;
 }
@@ -306,6 +380,9 @@ pointer foreign_makeclientsocket(scheme * sc, pointer args)
   int retcode;
   long port;
   int sock;
+#ifdef WIN32
+  int size = sizeof(address);
+#endif
 
   if(args == sc->NIL)
     return sc->F;
@@ -323,9 +400,15 @@ pointer foreign_makeclientsocket(scheme * sc, pointer args)
   hostname = sc->vptr->string_value(first_arg);
   port = sc->vptr->ivalue(second_arg);
 
-  if(inet_aton(hostname, &inaddr))
+#ifdef WIN32
+  /* inet_pton() is not implemented in Windows XP, 2003 */
+  if (WSAStringToAddress(hostname, AF_INET, NULL, (struct sockaddr *)&address, &size) == 0) {
+    inaddr = address.sin_addr;
+#else
+  if(inet_aton(hostname, &inaddr)) {
+#endif
     host = gethostbyaddr((char *) &inaddr, sizeof(inaddr), AF_INET);
-  else
+  } else
     host = gethostbyname(hostname);
 
   if(0 == host) {
@@ -338,7 +421,7 @@ pointer foreign_makeclientsocket(scheme * sc, pointer args)
   }
 
   address.sin_family = AF_INET;
-  address.sin_port   = htons(port);
+  address.sin_port   = htons((u_short) port);
   memcpy(&address.sin_addr, host->h_addr_list[0], sizeof(address.sin_addr));
 
   retcode = connect(sock, (struct sockaddr *)&address, sizeof(address));
@@ -356,7 +439,11 @@ pointer foreign_makeserversocket(scheme * sc, pointer args)
   pointer first_arg;
   struct sockaddr_in address;
   long port;
+#ifdef WIN32
+  const char one = 1;
+#else
   int one = 1;
+#endif
   int sock;
 
   if(args == sc->NIL)
@@ -377,7 +464,7 @@ pointer foreign_makeserversocket(scheme * sc, pointer args)
   setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
   address.sin_family = AF_INET;
-  address.sin_port   = htons(port);
+  address.sin_port   = htons((u_short) port);
   memset(&address.sin_addr, 0, sizeof(address.sin_addr));
 
   if(bind(sock, (struct sockaddr *) &address, sizeof(address))) {
@@ -586,7 +673,11 @@ pointer foreign_closesocket(scheme * sc, pointer args)
   
   sock = sc->vptr->ivalue(first_arg);
 
+#ifdef WIN32
+  retcode = _close(sock);
+#else
   retcode = close(sock);
+#endif
   if (-1 == retcode)
     return sc->F;
 

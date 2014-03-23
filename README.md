@@ -1,7 +1,8 @@
 tinyscheme
 ==========
 
-Experimental fork of [TinyScheme](http://tinyscheme.sourceforge.net/ "D. Souflis, J. Shapiro - TinyScheme Download site")
+Experimental fork of 
+[TinyScheme](http://tinyscheme.sourceforge.net/ "D. Souflis, J. Shapiro - TinyScheme Download site") and extensions [TSX](http://heras-gilsanz.com/manuel/tsx.html "Manuel Heras-Gilsanz - TinyScheme Extensions"), [RE](http://tinyscheme.sourceforge.net/download.html "D. Souflis, J. Shapiro - TinyScheme Download").
 
 
 Features
@@ -13,7 +14,8 @@ Features
 * embedding 'init.scm' into tinyscheme.exe (or tinyscheme.lib)
 * fixed crash in GC after getting read-char 'EOF'
 * implement 'string->uninterned-symbol' and 'gensym' gets new uninterned-symbol
-
+* include [TinyScheme Extensions (TSX)](http://heras-gilsanz.com/manuel/tsx.html)
+* include [TinyScheme RE extension](http://tinyscheme.sourceforge.net/download.html)
 
 Build (with MSVC)
 -----------------
@@ -59,6 +61,10 @@ Links
 -----
 
 [D. Souflis, J. Shapiro - TinyScheme Home](http://tinyscheme.sourceforge.net/home.html)
+
+[TinyScheme Extensions](http://heras-gilsanz.com/manuel/tsx.html)
+
+[TinyScheme RE extension - TinyScheme Download](http://tinyscheme.sourceforge.net/download.html)
 
 [Visual Studio Downloads](http://www.visualstudio.com/downloads/)
 

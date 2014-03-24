@@ -8,7 +8,7 @@ Experimental fork of
 Features
 --------
 
-* based on TinyScheme 1.41
+* based on [TinyScheme](http://tinyscheme.sourceforge.net/) 1.41
 * build with MS Visual C++ on Windows
 * continuations support without using 'SCHEME STACK' (#undef USE_SCHEME_STACK)
 * embedding 'init.scm' into tinyscheme.exe (or tinyscheme.lib)
@@ -62,7 +62,7 @@ Links
 
 [D. Souflis, J. Shapiro - TinyScheme Home](http://tinyscheme.sourceforge.net/home.html)
 
-[TinyScheme Extensions](http://heras-gilsanz.com/manuel/tsx.html)
+[Manuel Heras-Gilsanz - TinyScheme Extensions](http://heras-gilsanz.com/manuel/tsx.html)
 
 [TinyScheme RE extension - TinyScheme Download](http://tinyscheme.sourceforge.net/download.html)
 

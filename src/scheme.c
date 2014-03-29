@@ -819,7 +819,15 @@ pointer immutable_cons(scheme *sc, pointer a, pointer b) {
 
 #ifndef USE_OBJECT_LIST
 
-static int hash_fn(const char *key, int table_size);
+static int hash_fn(const char *key, int table_size)
+{
+  unsigned int hashed = 0;
+
+  while (*key) {
+    hashed = (hashed << 7) ^ *key++;
+  }
+  return hashed % table_size;
+}
 
 static pointer oblist_initial_value(scheme *sc)
 {
@@ -2158,24 +2166,11 @@ int eqv(pointer a, pointer b) {
 
 /* ========== Environment implementation  ========== */
 
-#if !defined(USE_ALIST_ENV) || !defined(USE_OBJECT_LIST)
-
-static int hash_fn(const char *key, int table_size)
-{
-  unsigned int hashed = 0;
-
-  while (*key) {
-    hashed = (hashed << 7) ^ *key++;
-  }
-  return hashed % table_size;
-}
-#endif
-
 #ifndef USE_ALIST_ENV
 
 /*
  * In this implementation, each frame of the environment may be
- * a hash table: a vector of alists hashed by variable name.
+ * a hash table: a vector of alists hashed by variable pointer.
  * In practice, we use a vector only for the initial frame;
  * subsequent frames are too small and transient for the lookup
  * speed to out-weigh the cost of making a new vector.
@@ -2202,7 +2197,7 @@ static INLINE void new_slot_spec_in_env(scheme *sc, pointer env,
   pointer slot = immutable_cons(sc, variable, value);
 
   if (is_vector(car(env))) {
-    int location = hash_fn(symname(variable), ivalue_unchecked(car(env)));
+    int location = (intptr_t)variable % ivalue_unchecked(car(env));
 
     set_vector_elem(car(env), location,
                     immutable_cons(sc, slot, vector_elem(car(env), location)));
@@ -2213,30 +2208,22 @@ static INLINE void new_slot_spec_in_env(scheme *sc, pointer env,
 
 static pointer find_slot_in_env(scheme *sc, pointer env, pointer hdl, int all)
 {
-  pointer x,y;
-  int location;
+  pointer x, y;
 
   for (x = env; x != sc->NIL; x = cdr(x)) {
     if (is_vector(car(x))) {
-      location = hash_fn(symname(hdl), ivalue_unchecked(car(x)));
-      y = vector_elem(car(x), location);
+      y = vector_elem(car(x), (intptr_t)hdl % ivalue_unchecked(car(x)));
     } else {
       y = car(x);
     }
     for ( ; y != sc->NIL; y = cdr(y)) {
       if (caar(y) == hdl) {
-        break;
+        return car(y);
       }
     }
-    if (y != sc->NIL) {
-       break;
-    }
-    if(!all) {
+    if (!all) {
       return sc->NIL;
     }
-  }
-  if (x != sc->NIL) {
-    return car(y);
   }
   return sc->NIL;
 }

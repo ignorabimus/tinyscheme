@@ -132,6 +132,7 @@ enum scheme_types {
 #define ADJ 32
 #define TYPE_BITS 5
 #define T_MASKTYPE      31    /* 0000000000011111 */
+#define T_RESULTREADY 2048    /* 0000100000000000 */   /* forced promise */
 #define T_SYNTAX      4096    /* 0001000000000000 */
 #define T_IMMUTABLE   8192    /* 0010000000000000 */
 #define T_ATOM       16384    /* 0100000000000000 */   /* only for gc */
@@ -235,8 +236,9 @@ INTERFACE INLINE pointer closure_env(pointer p)    { return cdr(p); }
 INTERFACE INLINE int is_continuation(pointer p)    { return (type(p)==T_CONTINUATION); }
 #define cont_dump(p)     cdr(p)
 
-/* To do: promise should be forced ONCE only */
 INTERFACE INLINE int is_promise(pointer p)  { return (type(p)==T_PROMISE); }
+INTERFACE INLINE int is_resultready(pointer p) { return typeflag(p) & T_RESULTREADY; }
+INTERFACE INLINE void setresultready(pointer p) { typeflag(p) |= T_RESULTREADY; }
 
 INTERFACE INLINE int is_environment(pointer p) { return (type(p)==T_ENVIRONMENT); }
 #define setenvironment(p)    typeflag(p) = T_ENVIRONMENT
@@ -2019,7 +2021,11 @@ static void atom2str(scheme *sc, pointer l, int f, char **pp, int *plen) {
      } else if (is_closure(l)) {
           p = "#<CLOSURE>";
      } else if (is_promise(l)) {
-          p = "#<PROMISE>";
+          if (is_resultready(l)) {
+               p = "#<PROMISE (FORCED)>";
+          } else {
+               p = "#<PROMISE>";
+          }
      } else if (is_foreign(l)) {
           p = sc->strbuff;
           snprintf(p,STRBUFFSIZE,"#<FOREIGN PROCEDURE %ld>", procnum(l));
@@ -3783,16 +3789,22 @@ static pointer opexe_4(scheme *sc, enum scheme_opcodes op) {
      case OP_FORCE:      /* force */
           sc->code = car(sc->args);
           if (is_promise(sc->code)) {
-               /* Should change type to closure here */
-               s_save(sc, OP_SAVE_FORCED, sc->NIL, sc->code);
-               sc->args = sc->NIL;
-               s_goto(sc,OP_APPLY);
+               if (is_resultready(sc->code)) {
+                    s_return(sc, car(sc->code));
+               } else {
+                    /* Should change type to closure here */
+                    s_save(sc, OP_SAVE_FORCED, sc->NIL, sc->code);
+                    sc->args = sc->NIL;
+                    s_goto(sc,OP_APPLY);
+               }
           } else {
                s_return(sc,sc->code);
           }
 
      case OP_SAVE_FORCED:     /* Save forced value replacing promise */
-          memcpy(sc->code,sc->value,sizeof(struct cell));
+          setresultready(sc->code);
+          car(sc->code) = sc->value;
+          cdr(sc->code) = sc->NIL;
           s_return(sc,sc->value);
 
      case OP_WRITE:      /* write */

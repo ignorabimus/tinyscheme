@@ -428,9 +428,9 @@
                           ;;continuation.
                           (func
                              (let ((current-ws *active-windings*))
-                                (lambda (x)
+                                (lambda x
                                    (set-active-windings! current-ws)
-                                   (continuation x)))))))))
+                                   (apply continuation x)))))))))
          outer-env)
       ;;We can't just say "define (dynamic-wind before thunk after)"
       ;;because the lambda it's defined to lives in this environment,
@@ -449,6 +449,9 @@
 
 (define call/cc call-with-current-continuation)
 
+(define values (lambda things
+    (call-with-current-continuation
+      (lambda (cont) (apply cont things)))))
 
 ;;;;; atom? and equal? written by a.k
 

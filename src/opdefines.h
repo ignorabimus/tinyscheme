@@ -54,6 +54,8 @@
     _OP_DEF(opexe_1, "eval",                           1,  2,       TST_ANY TST_ENVIRONMENT,         OP_PEVAL            )
     _OP_DEF(opexe_1, "apply",                          1,  INF_ARG, TST_NONE,                        OP_PAPPLY           )
     _OP_DEF(opexe_1, "call-with-current-continuation", 1,  1,       TST_NONE,                        OP_CONTINUATION     )
+    _OP_DEF(opexe_1, "call-with-values",               2,  2,       TST_NONE,                        OP_WITHVALUES0      )
+    _OP_DEF(opexe_1, 0,                                0,  0,       0,                               OP_WITHVALUES1      )
 #if USE_MATH
     _OP_DEF(opexe_2, "inexact->exact",                 1,  1,       TST_NUMBER,                      OP_INEX2EX          )
     _OP_DEF(opexe_2, "exp",                            1,  1,       TST_NUMBER,                      OP_EXP              )

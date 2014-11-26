@@ -2447,6 +2447,13 @@ static pointer s_clone_save(scheme *sc, pointer dump) {
   return d;
 }
 
+static enum scheme_opcodes s_next_op(scheme *sc) {
+  intptr_t nframes = (intptr_t)sc->dump;
+  struct dump_stack_frame *frame = (struct dump_stack_frame *)sc->dump_base + nframes - 1;
+
+  return frame->op;
+}
+
 static INLINE void dump_stack_reset(scheme *sc)
 {
   /* in this implementation, sc->dump is the number of frames on the stack */
@@ -2530,6 +2537,10 @@ static pointer s_clone(scheme *sc, pointer dump) {
 }
 
 #define s_clone_save s_clone
+
+static enum scheme_opcodes s_next_op(scheme *sc) {
+  return ivalue(car(sc->dump));
+}
 
 static INLINE void dump_stack_mark(scheme *sc)
 {
@@ -2742,7 +2753,11 @@ static pointer opexe_0(scheme *sc, enum scheme_opcodes op) {
                s_goto(sc,OP_BEGIN);
           } else if (is_continuation(sc->code)) { /* CONTINUATION */
                sc->dump = s_clone(sc, cont_dump(sc->code));
-               s_return(sc,sc->args != sc->NIL ? car(sc->args) : sc->NIL);
+               if (s_next_op(sc) == OP_WITHVALUES1) {
+                    s_return(sc, sc->args);
+               } else {
+                    s_return(sc, sc->args != sc->NIL ? car(sc->args) : sc->NIL);
+               }
           } else {
                Error_0(sc,"illegal function");
           }
@@ -3146,6 +3161,21 @@ static pointer opexe_1(scheme *sc, enum scheme_opcodes op) {
      case OP_CONTINUATION:    /* call-with-current-continuation */
           sc->code = car(sc->args);
           sc->args = cons(sc, mk_continuation(sc, s_clone_save(sc, sc->dump)), sc->NIL);
+          s_goto(sc,OP_APPLY);
+
+     case OP_WITHVALUES0: /* call-with-values */
+          s_save(sc, OP_WITHVALUES1, sc->args, sc->code);
+          sc->code = car(sc->args);
+          sc->args = sc->NIL;
+          s_goto(sc,OP_APPLY);
+
+     case OP_WITHVALUES1: /* call-with-values */
+          sc->code = cadr(sc->args);
+          if (is_pair(sc->value)) {
+               sc->args = sc->value;
+          } else {
+               sc->args = cons(sc, sc->value, sc->NIL);
+          }
           s_goto(sc,OP_APPLY);
 
      default:

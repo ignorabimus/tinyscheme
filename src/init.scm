@@ -453,6 +453,10 @@
     (call-with-current-continuation
       (lambda (cont) (apply cont things)))))
 
+(define-macro (receive formals expression . body)
+  `(call-with-values (lambda () ,expression)
+      (lambda ,formals ,@body)))
+
 ;;;;; atom? and equal? written by a.k
 
 ;;;; atom?

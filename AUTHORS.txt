@@ -1,0 +1,8 @@
+Copyright (c) 2000, Dimitrios Souflis
+Originally under BSD in TinyScheme, http://tinyscheme.sourceforge.net/
+
+Copyright (c) 2002 Manuel Heras-Gilsanz (manuel@heras-gilsanz.com)
+Originally under BSD in TinyScheme Extensions (TSX), http://heras-gilsanz.com/manuel/tsx.html
+
+Copyright (c) 1992, 1993, 1994 Henry Spencer
+Originally under BSD in Regular Expression Library(regex)

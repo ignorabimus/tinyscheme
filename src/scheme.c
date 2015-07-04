@@ -106,10 +106,6 @@ static const char *strlwr(char *s) {
 # define InitFile "init.scm"
 #endif
 
-#ifndef FIRST_CELLSEGS
-# define FIRST_CELLSEGS 3
-#endif
-
 enum scheme_types {
   T_STRING=1,
   T_NUMBER=2,
@@ -331,7 +327,7 @@ static int file_push(scheme *sc, const char *fname);
 static void file_pop(scheme *sc);
 static int file_interactive(scheme *sc);
 static INLINE int is_one_of(char *s, int c);
-static int alloc_cellseg(scheme *sc, int n);
+static int alloc_cellseg(scheme *sc);
 static long binary_decode(const char *s);
 static INLINE pointer get_cell(scheme *sc, pointer a, pointer b);
 static pointer _get_cell(scheme *sc, pointer a, pointer b);
@@ -559,59 +555,36 @@ static long binary_decode(const char *s) {
 }
 
 /* allocate new cell segment */
-static int alloc_cellseg(scheme *sc, int n) {
-     pointer newp;
-     pointer last;
-     pointer p;
-     char *cp;
-     long i;
-     int k;
-     int adj=ADJ;
+static int alloc_cellseg(scheme *sc) {
+    pointer last;
+    pointer p;
+    char *cp;
+    int adj = ADJ;
 
-     if(adj<sizeof(struct cell)) {
-       adj=sizeof(struct cell);
-     }
+    if (adj < sizeof(struct cell)) {
+        adj = sizeof(struct cell);
+    }
 
-     for (k = 0; k < n; k++) {
-         if (sc->last_cell_seg >= CELL_NSEGMENT - 1)
-              return k;
-         cp = (char*) sc->malloc(CELL_SEGSIZE * sizeof(struct cell)+adj);
-         if (cp == 0)
-              return k;
-         i = ++sc->last_cell_seg ;
-         sc->alloc_seg[i] = cp;
-         /* adjust in TYPE_BITS-bit boundary */
-         if(((unsigned long)cp)%adj!=0) {
-           cp=(char*)(adj*((unsigned long)cp/adj+1));
-         }
-         /* insert new segment in address order */
-         newp=(pointer)cp;
-         sc->cell_seg[i] = newp;
-         while (i > 0 && sc->cell_seg[i - 1] > sc->cell_seg[i]) {
-             p = sc->cell_seg[i];
-             sc->cell_seg[i] = sc->cell_seg[i - 1];
-             sc->cell_seg[--i] = p;
-         }
-         sc->fcells += CELL_SEGSIZE;
-         last = newp + CELL_SEGSIZE - 1;
-         for (p = newp; p <= last; p++) {
-              typeflag(p) = 0;
-              cdr(p) = p + 1;
-              car(p) = sc->NIL;
-         }
-         /* insert new cells in address order on free list */
-         if (sc->free_cell == sc->NIL || p < sc->free_cell) {
-              cdr(last) = sc->free_cell;
-              sc->free_cell = newp;
-         } else {
-               p = sc->free_cell;
-               while (cdr(p) != sc->NIL && newp > cdr(p))
-                    p = cdr(p);
-               cdr(last) = cdr(p);
-               cdr(p) = newp;
-         }
-     }
-     return n;
+    cp = (char *)sc->malloc(CELL_SEGSIZE * sizeof(struct cell) + adj);
+    if (cp == NULL) {
+        return 0;
+    }
+    sc->alloc_seg = cp;
+    /* adjust in TYPE_BITS-bit boundary */
+    if ((unsigned long)cp % adj != 0) {
+        cp = (char *)(adj * ((unsigned long)cp / adj + 1));
+    }
+    sc->cell_seg = (pointer)cp;
+    sc->fcells += CELL_SEGSIZE;
+    last = sc->cell_seg + CELL_SEGSIZE - 1;
+    for (p = sc->cell_seg; p <= last; p++) {
+        typeflag(p) = 0;
+        cdr(p) = p + 1;
+        car(p) = sc->NIL;
+    }
+    cdr(last) = sc->NIL;
+    sc->free_cell = sc->cell_seg;
+    return 1;
 }
 
 static INLINE pointer get_cell_x(scheme *sc, pointer a, pointer b) {
@@ -634,15 +607,12 @@ static pointer _get_cell(scheme *sc, pointer a, pointer b) {
   }
 
   if (sc->free_cell == sc->NIL) {
-    const int min_to_be_recovered = sc->last_cell_seg*8;
+    const int min_to_be_recovered = 8;
     gc(sc,a, b);
     if (sc->fcells < min_to_be_recovered
         || sc->free_cell == sc->NIL) {
-      /* if only a few recovered, get more to avoid fruitless gc's */
-      if (!alloc_cellseg(sc,1) && sc->free_cell == sc->NIL) {
-        sc->no_memory=1;
-        return sc->sink;
-      }
+      sc->no_memory=1;
+      return sc->sink;
     }
   }
   x = sc->free_cell;
@@ -661,13 +631,6 @@ static pointer reserve_cells(scheme *sc, int n) {
     if (sc->fcells < n) {
         /* If not, try gc'ing some */
         gc(sc, sc->NIL, sc->NIL);
-        if (sc->fcells < n) {
-            /* If there still aren't, try getting more heap */
-            if (!alloc_cellseg(sc,1)) {
-                sc->no_memory=1;
-                return sc->NIL;
-            }
-        }
         if (sc->fcells < n) {
             /* If all fail, report failure */
             sc->no_memory=1;
@@ -688,16 +651,6 @@ static pointer get_consecutive_cells(scheme *sc, int n) {
 
   /* If not, try gc'ing some */
   gc(sc, sc->NIL, sc->NIL);
-  x=find_consecutive_cells(sc,n);
-  if (x != sc->NIL) { return x; }
-
-  /* If there still aren't, try getting more heap */
-  if (!alloc_cellseg(sc,1))
-    {
-      sc->no_memory=1;
-      return sc->sink;
-    }
-
   x=find_consecutive_cells(sc,n);
   if (x != sc->NIL) { return x; }
 
@@ -1257,7 +1210,6 @@ E6:   /* up.  Undo the link switching from steps E4 and E5. */
 /* garbage collection. parameter a, b is marked. */
 static void gc(scheme *sc, pointer a, pointer b) {
   pointer p;
-  int i;
 
   if(sc->gc_verbose) {
     putstr(sc, "gc...");
@@ -1296,22 +1248,20 @@ static void gc(scheme *sc, pointer a, pointer b) {
      (which are also kept sorted by address) downwards to build the
      free-list in sorted order.
   */
-  for (i = sc->last_cell_seg; i >= 0; i--) {
-    p = sc->cell_seg[i] + CELL_SEGSIZE;
-    while (--p >= sc->cell_seg[i]) {
-      if (is_mark(p)) {
-        clrmark(p);
-      } else {
-        /* reclaim cell */
-        if (typeflag(p) != 0) {
-          finalize_cell(sc, p);
-          typeflag(p) = 0;
-          car(p) = sc->NIL;
-        }
-        ++sc->fcells;
-        cdr(p) = sc->free_cell;
-        sc->free_cell = p;
+  p = sc->cell_seg + CELL_SEGSIZE;
+  while (--p >= sc->cell_seg) {
+    if (is_mark(p)) {
+      clrmark(p);
+    } else {
+      /* reclaim cell */
+      if (typeflag(p) != 0) {
+        finalize_cell(sc, p);
+        typeflag(p) = 0;
+        car(p) = sc->NIL;
       }
+      ++sc->fcells;
+      cdr(p) = sc->free_cell;
+      sc->free_cell = p;
     }
   }
 
@@ -3967,13 +3917,6 @@ static pointer opexe_4(scheme *sc, enum scheme_opcodes op) {
           s_retbool(was);
      }
 
-     case OP_NEWSEGMENT: /* new-segment */
-          if (!is_pair(sc->args) || !is_number(car(sc->args))) {
-               Error_0(sc,"new-segment: argument must be a number");
-          }
-          alloc_cellseg(sc, (int) ivalue(car(sc->args)));
-          s_return(sc,sc->T);
-
      case OP_OBLIST: /* oblist */
           s_return(sc, oblist_all_symbols(sc));
 
@@ -4746,7 +4689,6 @@ int scheme_init_custom_alloc(scheme *sc, func_alloc malloc, func_dealloc free) {
   sc->gensym_cnt=0;
   sc->malloc=malloc;
   sc->free=free;
-  sc->last_cell_seg = -1;
   sc->sink = &sc->_sink;
   sc->NIL = &sc->_NIL;
   sc->T = &sc->_HASHT;
@@ -4762,7 +4704,7 @@ int scheme_init_custom_alloc(scheme *sc, func_alloc malloc, func_dealloc free) {
   sc->nesting=0;
   sc->interactive_repl=0;
 
-  if (alloc_cellseg(sc,FIRST_CELLSEGS) != FIRST_CELLSEGS) {
+  if (!alloc_cellseg(sc)) {
     sc->no_memory=1;
     return 0;
   }
@@ -4885,9 +4827,7 @@ void scheme_deinit(scheme *sc) {
   sc->gc_verbose=0;
   gc(sc,sc->NIL,sc->NIL);
 
-  for(i=0; i<=sc->last_cell_seg; i++) {
-    sc->free(sc->alloc_seg[i]);
-  }
+  sc->free(sc->alloc_seg);
 
 #if SHOW_ERROR_LINE
   for(i=0; i<=sc->file_i; i++) {

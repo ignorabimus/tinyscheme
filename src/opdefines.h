@@ -155,7 +155,6 @@
     _OP_DEF(opexe_4, "quit",                           0,  1,       TST_NUMBER,                      OP_QUIT             )
     _OP_DEF(opexe_4, "gc",                             0,  0,       0,                               OP_GC               )
     _OP_DEF(opexe_4, "gc-verbose",                     0,  1,       TST_NONE,                        OP_GCVERB           )
-    _OP_DEF(opexe_4, "new-segment",                    0,  1,       TST_NUMBER,                      OP_NEWSEGMENT       )
     _OP_DEF(opexe_4, "oblist",                         0,  0,       0,                               OP_OBLIST           )
     _OP_DEF(opexe_4, "current-input-port",             0,  0,       0,                               OP_CURR_INPORT      )
     _OP_DEF(opexe_4, "current-output-port",            0,  0,       0,                               OP_CURR_OUTPORT     )
